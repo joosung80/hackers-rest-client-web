@@ -10,7 +10,7 @@ import { html } from '@codemirror/lang-html'
 import { tags as t } from '@lezer/highlight'
 import { oneDarkHighlightStyle } from '@codemirror/theme-one-dark'
 import type { SentRequest } from '@/lib/variables'
-import { toCurl } from '@/lib/variables'
+import { toCurl, toPowerShell } from '@/lib/variables'
 
 export type ResultState =
   | { kind: 'idle' }
@@ -227,9 +227,20 @@ export default function ResponseView({ result, fontSize }: { result: ResultState
           </div>
         ))}
         {result.sent && (
-          <pre className="sent-pre">
-            {result.sent.method} {result.sent.url}
-          </pre>
+          <>
+            <pre className="sent-pre">
+              {result.sent.method} {result.sent.url}
+            </pre>
+            <div className="ps-box">
+              <div className="ps-head">
+                <b>🪟 PowerShell 로 보내기</b> — Windows 에서 같은 요청을 직접 보내는 명령
+                <button className="btn small" onClick={() => copy('PS', toPowerShell(result.sent!))}>
+                  {copied === 'PS' ? '복사됨 ✓' : 'PowerShell 명령 복사'}
+                </button>
+              </div>
+              <pre>{toPowerShell(result.sent)}</pre>
+            </div>
+          </>
         )}
       </div>
     )
@@ -245,7 +256,7 @@ export default function ResponseView({ result, fontSize }: { result: ResultState
         </span>
         <span className="meta">⏱ {r.elapsed.toLocaleString()} ms</span>
         <span className="meta">📦 {fmtSize(r.size)}</span>
-        <span className={`meta mode ${r.mode}`}>{r.mode === 'server' ? '🛰️ 서버 경유' : '🌐 브라우저 직접'}</span>
+        <span className={`meta mode ${r.mode}`}>{r.mode === 'server' ? '🛰️ 서버 경유' : '🌐 브라우저 직접 (내 PC)'}</span>
         <span className="resp-title-inline" title={r.title}>
           {r.title}
         </span>
@@ -279,6 +290,9 @@ export default function ResponseView({ result, fontSize }: { result: ResultState
         </button>
         <button className="ghost" onClick={() => copy('cURL', toCurl(r.sent))}>
           {copied === 'cURL' ? '복사됨 ✓' : 'cURL 복사'}
+        </button>
+        <button className="ghost" onClick={() => copy('PS', toPowerShell(r.sent))}>
+          {copied === 'PS' ? '복사됨 ✓' : 'PowerShell 복사'}
         </button>
       </div>
       <div className="resp-body">

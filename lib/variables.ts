@@ -240,6 +240,35 @@ function b64(s: string) {
   return btoa(String.fromCharCode(...new TextEncoder().encode(s)))
 }
 
+/** 내 PC · 사내망 주소인지 (서버가 들어갈 수 없는 곳) */
+export function isLocalUrl(url: string): boolean {
+  try {
+    const h = new URL(url).hostname.replace(/^\[|\]$/g, '').toLowerCase()
+    if (h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.local') || h === '::1') return true
+    const m = h.match(/^(\d+)\.(\d+)\.\d+\.\d+$/)
+    if (!m) return false
+    const a = Number(m[1]), b = Number(m[2])
+    return a === 127 || a === 10 || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31) || (a === 169 && b === 254)
+  } catch {
+    return false
+  }
+}
+
+/** Windows PowerShell 에서 같은 요청을 보내는 명령 */
+export function toPowerShell(s: SentRequest): string {
+  const q = (x: string) => `'${x.replace(/'/g, "''")}'`
+  const hdr = s.headers.filter(([k]) => k.toLowerCase() !== 'content-type')
+  const ct = s.headers.find(([k]) => k.toLowerCase() === 'content-type')?.[1]
+  const lines = [`$headers = @{ ${hdr.map(([k, v]) => `${q(k)} = ${q(v)}`).join('; ')} }`]
+  let cmd = `Invoke-RestMethod -Method ${s.method} -Uri ${q(s.url)} -Headers $headers`
+  if (s.body) {
+    lines.push(`$body = [System.Text.Encoding]::UTF8.GetBytes(@'\n${s.body}\n'@)`)
+    cmd += ` -ContentType ${q((ct || 'application/json') + (/charset/i.test(ct || '') ? '' : '; charset=utf-8'))} -Body $body`
+  }
+  lines.push(cmd + ' | ConvertTo-Json -Depth 10')
+  return lines.join('\n')
+}
+
 export function toCurl(s: SentRequest): string {
   const q = (x: string) => `'${x.replace(/'/g, `'\\''`)}'`
   const parts = [`curl -X ${s.method} ${q(s.url)}`]

@@ -7,7 +7,7 @@ import SettingsDialog, { type Settings, DEFAULT_SETTINGS, parseExtraVars } from 
 import HelpDrawer from './HelpDrawer'
 import { EXAMPLES, INSTRUCTOR } from '@/lib/examples'
 import { parseHttpFile, type ParsedRequest } from '@/lib/parser'
-import { buildRequest, type NamedResult, type SentRequest } from '@/lib/variables'
+import { buildRequest, isLocalUrl, type NamedResult, type SentRequest } from '@/lib/variables'
 
 const LS_FILES = 'rcw.files.v1'
 const LS_SETTINGS = 'rcw.settings.v1'
@@ -184,7 +184,7 @@ export default function App() {
         return
       }
       setResult({ kind: 'loading', title, started: Date.now() })
-      const mode = settings.mode
+      const mode: 'server' | 'direct' = settings.mode === 'auto' ? (isLocalUrl(sent.url) ? 'direct' : 'server') : settings.mode
       try {
         const r = mode === 'server' ? await sendViaServer(sent, !req.noRedirect) : await sendDirect(sent, !req.noRedirect)
         if (req.name)
@@ -195,14 +195,20 @@ export default function App() {
         setResult({ kind: 'done', title, mode, sent, warnings, ...r })
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e)
-        if (mode === 'direct' && e instanceof TypeError) {
+        if (mode === 'direct' && e instanceof DOMException && e.name === 'TimeoutError') {
+          setResult({
+            kind: 'error', title, sent, warnings,
+            message: '내 PC 로 보낸 요청이 10초 동안 응답이 없어요.',
+            hint: '① Chrome 주소창 왼쪽에 「로컬 네트워크의 기기에 액세스」 확인 창이 떴다면 「허용」 후 다시 보내기 ② n8n 이 켜져 있는지(npx n8n 창) 확인 ③ 테스트 URL 이면 Listen for test event 먼저 ④ 그래도 안 되면 아래 「PowerShell 명령 복사」로 보내기',
+          })
+        } else if (mode === 'direct' && e instanceof TypeError) {
           setResult({
             kind: 'error',
             title,
             sent,
             warnings,
             message: '브라우저가 요청을 막았어요 (CORS 일 가능성이 커요).',
-            hint: '상대 서버가 브라우저 출입 허가(CORS)를 주지 않았어요. ⚙️ 설정 → 요청 방식을 "서버 경유" 로 바꾸면 해결돼요. (내 PC 의 localhost 주소라면 n8n 이 켜져 있는지 확인)',
+            hint: isLocalUrl(sent.url) ? '내 PC n8n 이 꺼져 있거나, Chrome 의 「로컬 네트워크 액세스」를 차단했을 수 있어요. n8n 이 켜져 있는지 확인하고, 주소창 왼쪽 아이콘 → 사이트 설정에서 로컬 네트워크 액세스를 허용하세요. 안 되면 아래 「PowerShell 명령 복사」.' : '상대 서버가 브라우저 출입 허가(CORS)를 주지 않았어요. ⚙️ 설정 → 요청 방식을 "자동" 또는 "서버 경유" 로 바꾸면 해결돼요.',
           })
         } else setResult({ kind: 'error', title, sent, warnings, message: msg })
       }
@@ -281,7 +287,7 @@ export default function App() {
           <span className={`chip-v ${isInstructor ? 'inst' : 'mine'}`}>{isInstructor ? '강사 서버' : hostLabel}</span>
         </button>
         <button className="chip" onClick={() => setShowSettings(true)} title="요청 방식">
-          {settings.mode === 'server' ? '🛰️ 서버 경유' : '🌐 브라우저 직접'}
+          {settings.mode === 'auto' ? '✨ 자동' : settings.mode === 'server' ? '🛰️ 서버 경유' : '🌐 브라우저 직접'}
         </button>
         <button className="btn" onClick={() => setShowHelp(true)}>
           📘 문법 도움말
@@ -388,6 +394,7 @@ async function sendDirect(s: SentRequest, follow: boolean): Promise<SendResult> 
     headers: s.headers,
     body: ['GET', 'HEAD'].includes(s.method) ? undefined : s.body,
     redirect: follow ? 'follow' : 'manual',
+    signal: AbortSignal.timeout(10_000),
   })
   const buf = await res.arrayBuffer()
   const headers: [string, string][] = []

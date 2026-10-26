@@ -6,7 +6,7 @@ import { INSTRUCTOR, DEFAULT_EXTRA_VARS } from '@/lib/examples'
 export type Settings = {
   n8n: string
   diary: string
-  mode: 'server' | 'direct'
+  mode: 'auto' | 'server' | 'direct'
   extraVars: string
   fontSize: number
 }
@@ -14,7 +14,7 @@ export type Settings = {
 export const DEFAULT_SETTINGS: Settings = {
   n8n: INSTRUCTOR.n8n,
   diary: INSTRUCTOR.diary,
-  mode: 'server',
+  mode: 'auto',
   extraVars: DEFAULT_EXTRA_VARS,
   fontSize: 15,
 }
@@ -85,7 +85,7 @@ export default function SettingsDialog({ initial, onSave, onClose }: { initial: 
             </div>
             {local && (
               <div className="note">
-                💡 내 PC(localhost) 의 n8n 이면 아래 요청 방식을 <b>브라우저 직접</b> 으로 바꾸세요. 서버는 내 PC 에 들어갈 수 없어요.
+                💡 내 PC n8n 이네요! 요청 방식 <b>자동</b> 이면 알아서 브라우저 직접으로 보내요. 처음 보낼 때 Chrome 주소창에 <b>「로컬 네트워크 기기 액세스」 확인 창</b>이 뜨면 <b>허용</b>을 눌러 주세요.
               </div>
             )}
             <div className="row-btns">
@@ -106,17 +106,26 @@ export default function SettingsDialog({ initial, onSave, onClose }: { initial: 
 
           <section>
             <h3>② 요청 방식</h3>
+            <label className={`radio ${s.mode === 'auto' ? 'on' : ''}`}>
+              <input type="radio" checked={s.mode === 'auto'} onChange={() => setS({ ...s, mode: 'auto' })} />
+              <div>
+                <b>✨ 자동 (추천 · 셀프 호스팅 지원)</b>
+                <p>
+                  주소를 보고 알아서 골라요 — 인터넷 주소(n8n Cloud 등)는 <b>서버 경유</b>, 내 PC(<code>localhost</code>)·사내망 n8n 은 <b>브라우저 직접</b>.
+                </p>
+              </div>
+            </label>
             <label className={`radio ${s.mode === 'server' ? 'on' : ''}`}>
               <input type="radio" checked={s.mode === 'server'} onChange={() => setS({ ...s, mode: 'server' })} />
               <div>
-                <b>🛰️ 서버 경유 (추천)</b>
+                <b>🛰️ 항상 서버 경유</b>
                 <p>이 사이트의 서버가 대신 보내요 → <b>CORS 걱정 없음</b>. 인터넷에 공개된 주소면 다 돼요.</p>
               </div>
             </label>
             <label className={`radio ${s.mode === 'direct' ? 'on' : ''}`}>
               <input type="radio" checked={s.mode === 'direct'} onChange={() => setS({ ...s, mode: 'direct' })} />
               <div>
-                <b>🌐 브라우저 직접</b>
+                <b>🌐 항상 브라우저 직접</b>
                 <p>내 브라우저가 바로 보내요. 내 PC(localhost)·사내망 주소용. 상대가 CORS 를 허락해야 해요.</p>
               </div>
             </label>

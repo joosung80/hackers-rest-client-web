@@ -161,3 +161,9 @@ input[type=range] { width: 100%; }
   .topbar { gap: 6px; padding: 8px; }
   .btn { padding: 5px 9px; }
 }
+
+.ps-box { margin-top: 14px; border: 1px solid #3c3c3c; border-radius: 8px; background: #1e1e1e; }
+.ps-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-bottom: 1px solid #333; font-size: 13px; color: var(--muted); }
+.ps-head b { color: var(--ink); }
+.ps-head .btn { margin-left: auto; }
+.ps-box pre { margin: 0; padding: 12px; font: 12.5px/1.6 var(--mono); white-space: pre-wrap; word-break: break-all; color: #d4d4d4; }
